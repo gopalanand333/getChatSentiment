@@ -1,0 +1,23 @@
+{
+  "name": "chatsentimentanalysis",
+  "version": "1.0.0",
+  "description": "Node app to get chat sentiment analysis",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "~4.10.2"
+  },
+  "main": "index.js",
+  "scripts": {
+    "start": "node index"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gopalanand333/getChatSentiment.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gopalanand333/getChatSentiment/issues"
+  },
+  "homepage": "https://github.com/gopalanand333/getChatSentiment#readme"
+}
