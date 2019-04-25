@@ -2,33 +2,37 @@
     <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
     <script src="plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     </head>
     <body>
     <div class="navbar"><span>Real-Time Sentiment Analysis</span></div>
     <div class="wrapper">
 
-        <div id="chart"></div>
+        <div id="chart"  width="50%" height="50%"></div>
         <script>
-            function getData() {
-               $.get("http://localhost:8088/getData", function(data,status){
-                   if(data !=="")
-                 $.a= data[data.length-1];
-               });
-               return $.a;
-            }  
-
+            // function getData() {
+            //    $.get("http://localhost:8088/getData", function(data,status){
+            //        if(data !=="")
+            //      $.a= data[data.length-1];
+            //    });
+            //    return $.a;
+            // }  
+            var socket = io.connect();
+            socket.on('dataStream', function (data) {
+           buildChart(data.score);
+            });
             Plotly.plot('chart',[{
-                y:[getData()],
+                y:[0],
                 type:'scatter'
             }]);
             
             var cnt = 0;
 
-            setInterval(function(){
+            function buildChart(stream){ 
                 var that = this;  
                 this.dataLength++;
-                Plotly.extendTraces('chart',{ y:[[getData()]]}, [0]);
+                Plotly.extendTraces('chart',{ y:[[stream]]}, [0]);
                 cnt++;
                 
                 if(cnt > 500) {
@@ -38,7 +42,7 @@
                         }
                     });
                 }
-            },15);
+            };
         </script>
     </div>
     </body>
