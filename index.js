@@ -1,7 +1,6 @@
 /*jshint esversion: 8 */
 const express = require("express");
-const fetch = require("node-fetch");
-
+const mysql = require("mysql");
 // Imports the Google Cloud client library
 const language = require('@google-cloud/language');
 const request = require("request");
@@ -27,8 +26,9 @@ app.use(express.static(__dirname + "/charts"));
 // Post port http://localhost:8090/analyzeSentiment
 app.post("/analyzeSentiment", (req, res) => {
     var payload = req.body.message;
+    var user = req.body.user;
     console.log(payload);
-    analyzeSentimentData(payload);
+    analyzeSentimentData(payload,user);
     res.status(200).send("sent for sentiment analysis");
 });
 app.get("/getData", (req, res) => {
@@ -48,7 +48,7 @@ io.on("connection", function(socket){
   
 });
 // function to call google apis for sentiment analysis
-function analyzeSentimentData(textStream) {
+function analyzeSentimentData(textStream,user) {
     var data = {
         "document": {
             "content": textStream,
@@ -57,16 +57,128 @@ function analyzeSentimentData(textStream) {
         "encodingType": "UTF8"
     };
     var that = this;
-
+    var userType = user;
     console.log(JSON.stringify(data));
-    request.post("https://language.googleapis.com/v1/documents:analyzeSentiment?fields=documentSentiment&key={apiKey}", {
+    request.post("https://language.googleapis.com/v1/documents:analyzeSentiment?fields=documentSentiment&key=AIzaSyDo0khXTawz5tUGoKvelmGTI8AOiUrH3EM", {
         json: data
     }, function (err, res, body) {
         if (err) {
             console.log(err);
         }
+        console.log(body);
         console.log(body.documentSentiment.score);
+        // store to db
+        storeToDatabase(body.documentSentiment, userType);
         // socket implementation
         io.emit("dataStream",body.documentSentiment);
+    });
+}
+/////Database storage part
+const conn = mysql.createConnection({
+    host: "localhost",
+    user: "root",
+    password: "root",
+    database: "sentiment"
+});
+function storeToDatabase(dataStream,userType){
+    conn.connect((err)=>{
+        if(err){
+            console.log(err);
+        }
+        console.log(dataStream);
+        var date = new Date().toISOString();
+        var query = "INSERT INTO sentiment.sentimentstore(score,magnitude,user) VALUES("+ dataStream.score + ","+ dataStream.magnitude +", \""+ userType +"\")";
+        console.log(query);
+        conn.query(query,(err,result)=>{
+            if(err){
+                console.log(err);
+            }
+            console.log("inserted");
+        
+        });
+    });
+}
+/// get db data api
+app.get("/getDbData",(req,res)=>{
+var data = getDbData();
+data.then((result)=>{
+    res.send(result).status(200);
+},(err)=>{
+    res.send(err).status(500);
+});
+});
+app.get("/getRecentData",(req,res)=>{
+    var data = getRecentData();
+    data.then((result)=>{
+        res.send(result).status(200);
+    },(err)=>{
+        res.send(err).status(500);
+    });
+});
+function getRecentData(){
+    return new Promise((resolve,reject)=>{
+        var data;
+        var query= "SELECT * FROM sentiment.sentimentstore order by timestamp desc limit 10";
+        conn.query(query,(err,result)=>{
+            if(err){
+                reject(err);
+            }else{
+                var d=[];
+                var obj={};
+                for(var i=0;i<result.length;i++){
+                    obj = {};
+                    obj.day= i;
+                    obj.score = result[i].score;
+                    obj.user = result[i].user;
+                    obj.date = result[i].timestamp;
+                    d.push(obj);
+                }
+                resolve(d);
+            }
+        });
+    });
+}
+// function getAggregateByUser(){
+//     return new Promise((resolve,reject)=>{
+//           var data;
+//         var query= "SELECT * FROM sentiment.sentimentstore";
+//         conn.query(query,(err,result)=>{
+//             if(err){
+//                 reject(err);
+//             }else{
+//                 var d=[];
+//                 var obj={};
+//                 for(var i=0;i<result.length;i++){
+//                     obj = {};
+//                     obj.day= i;
+//                     obj.user = result[i].user;
+//                     obj.score = result[i].score;
+//                     d.push(obj);
+//                 }
+//                 resolve(d);
+//             }
+//         });
+//     });
+// }
+function getDbData(){
+    return new Promise((resolve,reject)=>{
+        var data;
+        var query= "SELECT * FROM sentiment.sentimentstore";
+        conn.query(query,(err,result)=>{
+            if(err){
+                reject(err);
+            }else{
+                var d=[];
+                var obj={};
+                for(var i=0;i<result.length;i++){
+                    obj = {};
+                    obj.day= i;
+                    obj.user = result[i].user;
+                    obj.score = result[i].score;
+                    d.push(obj);
+                }
+                resolve(d);
+            }
+        });
     });
 }

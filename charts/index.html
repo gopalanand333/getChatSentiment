@@ -1,49 +1,370 @@
 <html>
-    <head>
-    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="plotly.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    </head>
-    <body>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+    <!-- Latest compiled JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.1/raphael.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/justgage/1.2.9/justgage.js"></script>
+    <!-- STYLING SECTION -->
+    <style>
+        /* Set height of the grid so .sidenav can be 100% (adjust as needed) */
+        .row.content {
+            height: 550px
+        }
+        .darktheme{
+            background-color: rgba(0, 0, 0, 0.801)
+        }
+        .heightHundred{
+            height: 99%
+        }
+        /* Set gray background color and 100% height */
+        .sidenav {
+            background-color: #f1f1f1;
+            height: 100%;
+        }
+
+        /* On small screens, set height to 'auto' for the grid */
+        @media screen and (max-width: 767px) {
+            .row.content {
+                height: auto;
+            }
+        }
+        .wrapperChart {
+      position: relative;
+      width: 100%;
+      height: 35%;
+    } .container {
+      width: 450px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .gauge {
+      width: 100%;
+      height: 240px;
+    }
+
+    .flexbox {
+      display: flex;
+      flex-wrap: wrap;
+    }
+    .flexbox>div {
+      flex: 1 0 300px;
+    }
+
+    .bg-dark{
+
+    }
+    .bg-darker{
+
+    }
+
+    .card {
+  background: rgb(43, 42, 42);
+  border-radius: 4px;
+  display: inline-block;
+  height: 99%;
+  margin: 1rem;
+  position: relative;
+  width: 99%;
+}
+
+.card-4 {
+  box-shadow: 0 14px 28px rgba(44, 44, 44, 0.25), 0 10px 10px rgba(51, 51, 51, 0.25);
+}
+
+    </style>
+
+<!-- Resources -->
+<script src="https://www.amcharts.com/lib/4/core.js"></script>
+<script src="https://www.amcharts.com/lib/4/charts.js"></script>
+<script src="https://www.amcharts.com/lib/4/themes/dark.js"></script>
+<script src="https://www.amcharts.com/lib/4/themes/animated.js"></script>
+
+</head>
+
+<body class="darktheme">
+        <div class="card card-4"><div id="chartdiv"></div></div>
+        <div class="card card-4">text</div>
+            <!-- <div class="col-sm-12 heightHundred">
+                <div class="well">
+                 
+                </div>
+                <div class="row">
+                    <div class="col-sm-3" style="width:30%;">
+                        <div class="well">
+                                <div class="wrapperChart">
+                                        <div class="flexbox">
+                                          <div class="box">
+                                            <div id="gauge" class="gauge"></div>
+                                        </div>
+                                      </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                      
+
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="well">
+                            <h4>Sessions</h4>
+                            <p>10 Million</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="well">
+                            <h4>Bounce</h4>
+                            <p>30%</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-4">
+                        <div class="well">
+                                <div id="chartDiv"></div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="well">
+                            <p>Text</p>
+                            <p>Text</p>
+                            <p>Text</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="well">
+                            <p>Text</p>
+                            <p>Text</p>
+                            <p>Text</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-8">
+                        <div class="well">
+                            <p>Text</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="well">
+                            <p>Text</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <-- THIS IS THE PREVIOUS CHART -->
     <div class="navbar"><span>Real-Time Sentiment Analysis</span></div>
+
     <div class="wrapper">
 
-        <div id="chart"  width="50%" height="50%"></div>
+        <div id="chart"></div>
         <script>
-            // function getData() {
-            //    $.get("http://localhost:8088/getData", function(data,status){
-            //        if(data !=="")
-            //      $.a= data[data.length-1];
-            //    });
-            //    return $.a;
-            // }  
             var socket = io.connect();
             socket.on('dataStream', function (data) {
-           buildChart(data.score);
+                // buildChart(data.score);
+                // g.refresh(data.score);
+                var latestData ={};
+                latestData.score = data.score;
+                latestData.day = chart.data.length;
+                chart.data.push(latestData);
             });
-            Plotly.plot('chart',[{
-                y:[0],
-                type:'scatter'
-            }]);
-            
-            var cnt = 0;
+     refreshLineChart();
+    function refreshLineChart(){
+    $.ajax({url: "http://localhost:8088/getDbData",
+    success: function(data){
+    console.log(data);
+    chart.data = data;
+    },
+    error: function(err){
+    console.log(err);
+    }
+    });
+    }
+//----------------------------------------------------------------------------------
+//the line chart
+// Themes begin
+am4core.useTheme(am4themes_dark);
+am4core.useTheme(am4themes_animated);
+// Themes end
 
-            function buildChart(stream){ 
-                var that = this;  
-                this.dataLength++;
-                Plotly.extendTraces('chart',{ y:[[stream]]}, [0]);
-                cnt++;
-                
-                if(cnt > 500) {
-                    Plotly.relayout('chart',{
-                        xaxis: {
-                            range: [cnt-500,cnt]
-                        }
-                    });
-                }
-            };
+// Create chart instance
+var chart = am4core.create("chartdiv", am4charts.XYChart);
+chart.paddingRight = 10;
+
+// Add data
+// chart.data = [{
+//   "year": "1950",
+//   "value": -0.307n
+// }];
+
+// Create axes
+var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+categoryAxis.dataFields.category = "day";
+categoryAxis.renderer.minGridDistance = 10;
+categoryAxis.renderer.grid.template.location = 0.5;
+categoryAxis.startLocation = 0.5;
+categoryAxis.endLocation = 0.5;
+
+// // Pre zoom
+// chart.events.on("datavalidated", function () {
+//   categoryAxis.zoomToIndexes(Math.round(chart.data.length * 0.5), Math.round(chart.data.length * 0.1));
+// });
+
+// Create value axis
+var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+valueAxis.baseValue = 0;
+// Create series
+var series = chart.series.push(new am4charts.LineSeries());
+series.dataFields.valueY = "score";
+series.dataFields.categoryX = "day";
+series.strokeWidth = 2;
+series.tensionX = 0.77;
+
+var range = valueAxis.createSeriesRange(series);
+range.value = 0;
+range.endValue = 500;
+range.contents.stroke = am4core.color("#33db24");
+range.contents.fill = range.contents.stroke;
+
+// // Add scrollbar
+var scrollbarX = new am4charts.XYChartScrollbar();
+scrollbarX.series.push(series);
+chart.scrollbarX = scrollbarX;
+
+chart.cursor = new am4charts.XYCursor();
+            /////////////////
+//             am4core.ready(function() {
+
+// // Themes begin
+// am4core.useTheme(am4themes_dark);
+// am4core.useTheme(am4themes_animated);
+// // Themes end
+
+// // Create chart instance
+// var chart = am4core.create("chartDiv", am4charts.XYChart);
+
+// // Add data
+// chart.data = [{
+//     "name": "Happy",
+//     "points": 35654,
+//     "color": chart.colors.next(),
+//     "bullet": "https://www.amcharts.com/lib/images/faces/A04.png"
+// }, {
+//     "name": "Very Happy",
+//     "points": 65456,
+//     "color": chart.colors.next(),
+//     "bullet": "https://www.amcharts.com/lib/images/faces/C02.png"
+// }, {
+//     "name": "Neutral",
+//     "points": 45724,
+//     "color": chart.colors.next(),
+//     "bullet": "https://www.amcharts.com/lib/images/faces/D02.png"
+// }, {
+//     "name": "Negative",
+//     "points": 13654,
+//     "color": chart.colors.next(),
+//     "bullet": "https://www.amcharts.com/lib/images/faces/E01.png"
+// }];
+
+// // Create axes
+// var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+// categoryAxis.dataFields.category = "name";
+// categoryAxis.renderer.grid.template.disabled = true;
+// categoryAxis.renderer.minGridDistance = 30;
+// categoryAxis.renderer.inside = true;
+// categoryAxis.renderer.labels.template.fill = am4core.color("#fff");
+// categoryAxis.renderer.labels.template.fontSize = 20;
+
+// var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+// valueAxis.renderer.grid.template.strokeDasharray = "4,4";
+// valueAxis.renderer.labels.template.disabled = true;
+// valueAxis.min = 0;
+
+// // Do not crop bullets
+// chart.maskBullets = false;
+
+// // Remove padding
+// chart.paddingBottom = 0;
+
+// // Create series
+// var series = chart.series.push(new am4charts.ColumnSeries());
+// series.dataFields.valueY = "points";
+// series.dataFields.categoryX = "name";
+// series.columns.template.propertyFields.fill = "color";
+// series.columns.template.propertyFields.stroke = "color";
+// series.columns.template.column.cornerRadiusTopLeft = 15;
+// series.columns.template.column.cornerRadiusTopRight = 15;
+// series.columns.template.tooltipText = "{categoryX}: [bold]{valueY}[/b]";
+
+// // Add bullets
+// var bullet = series.bullets.push(new am4charts.Bullet());
+// var image = bullet.createChild(am4core.Image);
+// image.horizontalCenter = "middle";
+// image.verticalCenter = "bottom";
+// image.dy = 20;
+// image.y = am4core.percent(100);
+// image.propertyFields.href = "bullet";
+// image.tooltipText = series.columns.template.tooltipText;
+// image.propertyFields.fill = "color";
+// image.filters.push(new am4core.DropShadowFilter());
+
+// }); 
+// // end
+//  //am4core.ready()
+//             ////////////////////////
+//         // just gauze chart
+//             var g = new JustGage({
+//                     id: "gauge",
+//                     pointer: true,
+//                     pointerOptions: {
+//                     toplength: -15,
+//                     bottomlength: 8,
+//                     bottomwidth: 10,
+//                     color: '#000',
+//                     stroke: '#ffffff',
+//                     stroke_width: 1,
+//                     stroke_linecap: 'round'
+//                     }, 
+//                     relativeGaugeSize: true,
+//                     value: -1,
+//                     min: -1,
+//                     max: 1,
+//                     label: "Sentiment Level"
+//                     });
+//             Plotly.plot('chart', [{
+//                 y: [0],
+//                 type: 'scatter'
+//             }]);
+
+//             var cnt = 0;
+
+//             function buildChart(stream) {
+//                 var that = this;
+//                 this.dataLength++;
+//                 Plotly.extendTraces('chart', { y: [[stream]] }, [0]);
+//                 cnt++;
+
+//                 if (cnt > 500) {
+//                     Plotly.relayout('chart', {
+//                         xaxis: {
+//                             range: ["cnt" - 500, cnt]
+//                         }
+//                     });
+//                 }
+//             };
         </script>
-    </div>
-    </body>
+    </div> 
+</body>
+
 </html>
