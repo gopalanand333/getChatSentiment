@@ -1,6 +1,44 @@
 /*jshint esversion: 8 */
 const express = require("express");
-const mysql = require("mysql");
+const Pool = require("pg").Pool;
+const dotenv = require("dotenv");
+dotenv.config();
+var pgConfig;
+// postgres database configuration
+var config = {
+    environment: process.env.NODE_ENV,
+    port: process.env.port,
+    username: process.env.localUser,
+    password: process.env.localPassword,
+    dbname: process.env.dbname,
+    hostname: process.env.hostname
+};
+if (config.environment !== "development") {
+    dbConfiguration = JSON.parse(process.env.VCAP_SERVICES);
+    pgConfig = {
+        host: databaseConfiguration.postgresql[0].credentials.hostname,
+        database: databaseConfiguration.postgresql[0].credentials.dbname,
+        user: databaseConfiguration.postgresql[0].credentials.username,
+        password: databaseConfiguration.postgresql[0].credentials.password,
+        port: databaseConfiguration.postgresql[0].credentials.port
+    };
+} else {
+    pgConfig = {
+        host: config.hostname,
+        database: config.dbname,
+        user: config.username,
+        password: config.password,
+        port: config.pgport
+    };
+}
+var Conn = new Pool({
+    user : pgConfig.user,
+    host: pgConfig.host,
+    database: pgConfig.database,
+    password: pgConfig.password,
+    port : pgConfig.port
+});
+
 // Imports the Google Cloud client library
 const language = require('@google-cloud/language');
 const request = require("request");
@@ -14,9 +52,6 @@ const bodyParser = require("body-parser");
 const port = process.env.PORT || 8088;
 const server = app.listen(port);
 const io = require("socket.io").listen(server);
-
-
-
 app.use(bodyParser.json()); // support encoded json bodies
 app.use(bodyParser.urlencoded({
     extended: true
@@ -25,10 +60,9 @@ app.use(bodyParser.urlencoded({
 app.use(express.static(__dirname + "/charts"));
 // Post port http://localhost:8090/analyzeSentiment
 app.post("/analyzeSentiment", (req, res) => {
-    var payload = req.body.message;
-    var user = req.body.user;
-    console.log(payload);
-    analyzeSentimentData(payload,user);
+    var payload = req.body;
+    console.log("payload", payload);
+    analyzeSentimentData(payload);
     res.status(200).send("sent for sentiment analysis");
 });
 app.get("/getData", (req, res) => {
@@ -48,55 +82,45 @@ io.on("connection", function(socket){
   
 });
 // function to call google apis for sentiment analysis
-function analyzeSentimentData(textStream,user) {
+function analyzeSentimentData(textStream) {
+    console.log(textStream);
+    var text =textStream;
+console.log("text",text);
     var data = {
         "document": {
-            "content": textStream,
+            "content": textStream.text,
             "type": "PLAIN_TEXT"
         },
         "encodingType": "UTF8"
     };
     var that = this;
-    var userType = user;
+    var userType = textStream;
     console.log(JSON.stringify(data));
-    request.post("https://language.googleapis.com/v1/documents:analyzeSentiment?fields=documentSentiment&key=AIzaSyDo0khXTawz5tUGoKvelmGTI8AOiUrH3EM", {
+    request.post("https://language.googleapis.com/v1/documents:analyzeSentiment?fields=documentSentiment&key=AIzaSyCKhJRvB92xo_TPMUa3cQVkVp7bE6KRwhQ", {
         json: data
     }, function (err, res, body) {
         if (err) {
             console.log(err);
         }
         console.log(body);
-        console.log(body.documentSentiment.score);
+        console.log(body.documentSentiment);
         // store to db
         storeToDatabase(body.documentSentiment, userType);
         // socket implementation
         io.emit("dataStream",body.documentSentiment);
     });
 }
-/////Database storage part
-const conn = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "root",
-    database: "sentiment"
-});
+
 function storeToDatabase(dataStream,userType){
-    conn.connect((err)=>{
-        if(err){
-            console.log(err);
-        }
-        console.log(dataStream);
         var date = new Date().toISOString();
-        var query = "INSERT INTO sentiment.sentimentstore(score,magnitude,user) VALUES("+ dataStream.score + ","+ dataStream.magnitude +", \""+ userType +"\")";
+        var query = "INSERT INTO sentimentstore( score, magnitude, processor,component, "/timestamp/") VALUES("/ + dataStream.score + "," + dataStream.magnitude + ", \"" + userType.processor + "\", \"" + userType.component + "\" "  + timestamp +" )";
         console.log(query);
-        conn.query(query,(err,result)=>{
+        Conn.connection.query(query,(err,result)=>{
             if(err){
                 console.log(err);
             }
             console.log("inserted");
-        
         });
-    });
 }
 /// get db data api
 app.get("/getDbData",(req,res)=>{
@@ -118,19 +142,22 @@ app.get("/getRecentData",(req,res)=>{
 function getRecentData(){
     return new Promise((resolve,reject)=>{
         var data;
-        var query= "SELECT * FROM sentiment.sentimentstore order by timestamp desc limit 10";
-        conn.query(query,(err,result)=>{
+        var query= "SELECT * FROM sentimentstore order by timestamp desc limit 50";
+        Conn.query(query,(err,result)=>{
             if(err){
+                console.log(err);
                 reject(err);
             }else{
+                console.log(result);
                 var d=[];
                 var obj={};
-                for(var i=0;i<result.length;i++){
+                for(var i=0;i<result.rows.length;i++){
                     obj = {};
                     obj.day= i;
-                    obj.score = result[i].score;
-                    obj.user = result[i].user;
-                    obj.date = result[i].timestamp;
+                    obj.score = result.rows[i].score;
+                    obj.user = result.rows[i].user;
+                    obj.component = result.rows[i].component;
+                    obj.date = result.rows[i].timestamp;
                     d.push(obj);
                 }
                 resolve(d);
@@ -138,43 +165,21 @@ function getRecentData(){
         });
     });
 }
-// function getAggregateByUser(){
-//     return new Promise((resolve,reject)=>{
-//           var data;
-//         var query= "SELECT * FROM sentiment.sentimentstore";
-//         conn.query(query,(err,result)=>{
-//             if(err){
-//                 reject(err);
-//             }else{
-//                 var d=[];
-//                 var obj={};
-//                 for(var i=0;i<result.length;i++){
-//                     obj = {};
-//                     obj.day= i;
-//                     obj.user = result[i].user;
-//                     obj.score = result[i].score;
-//                     d.push(obj);
-//                 }
-//                 resolve(d);
-//             }
-//         });
-//     });
-// }
 function getDbData(){
     return new Promise((resolve,reject)=>{
         var data;
         var query= "SELECT * FROM sentiment.sentimentstore";
-        conn.query(query,(err,result)=>{
+        Conn.query(query,(err,result)=>{
             if(err){
                 reject(err);
             }else{
                 var d=[];
                 var obj={};
-                for(var i=0;i<result.length;i++){
+                for(var i=0;i<result.rows.length;i++){
                     obj = {};
                     obj.day= i;
-                    obj.user = result[i].user;
-                    obj.score = result[i].score;
+                    obj.user = result.rows[i].user;
+                    obj.score = result.rows[i].score;
                     d.push(obj);
                 }
                 resolve(d);
