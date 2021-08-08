@@ -96,7 +96,7 @@ console.log("text",text);
     var that = this;
     var userType = textStream;
     console.log(JSON.stringify(data));
-    request.post("https://language.googleapis.com/v1/documents:analyzeSentiment?fields=documentSentiment&key=AIzaSyCKhJRvB92xo_TPMUa3cQVkVp7bE6KRwhQ", {
+    request.post("https://language.googleapis.com/v1/documents:analyzeSentiment?fields=documentSentiment&key=<apikey>", {
         json: data
     }, function (err, res, body) {
         if (err) {
